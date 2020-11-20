@@ -1,0 +1,154 @@
+; Register names
+.const r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 at rv ra fp sp
+
+
+
+; Segments
+.segment .text 16 0x8000 0x0    .VMEM   ; Instructions
+.segment .data 16 0x8000 0x8000 .VMEM   ; Data
+
+
+
+; Format 0 with 4-bit register operand & 8-bit immediate/address-offset operand
+.FRMT0_REG_IMM $d, imm := 1:1 (.this >> 1):2 d:4 .this:1 imm:8
+.alias .FRMT0_REG_IMM lex lhi
+
+; Format 0 with 4-bit register operand & 8-bit address-offset operand
+.FRMT0_REG_OFF $c, label := 1:1 (.this >> 1):2 c:4 .this:1 ((label-.)-1):8
+.alias .FRMT0_REG_OFF 2 brf brt
+
+; Format 0 with 4-bit register operand & 8-bit Qat register operand
+.FRMT0_REG_QREG $d, @qr := 1:1 (.this >> 1):2 d:4 .this:1 qr:8
+.alias .FRMT0_REG_QREG 4 meas next
+
+; Format 0 with 4-bit immediate operand & 8-bit Qat register operand
+.FRMT0_IMM_QREG @qr, imm := 1:1 (.this >> 1):2 imm:4 .this:1 qr:8
+.alias .FRMT0_IMM_QREG 6 had
+
+
+
+; Format 1 ALU instruction with a single 4-bit register operand
+; (the last 4 bits are "don't care"s, but will default to 0s here)
+.FRMT1_ALU_1OPS $r := 0:1 1:2 r:4 .this:5 0:4
+.alias .FRMT1_ALU_1OPS not float int neg negf recip
+
+; Format 1 ALU instruction with two 4-bit operands
+.FRMT1_ALU_2OPS $d, $s := 0:1 1:2 d:4 .this:5 s:4
+.alias .FRMT1_ALU_2OPS 6 add mul slt and or shift xor addf mulf sltf
+
+; Format 1 non-ALU instruction with a single 4-bit register operand
+; (the last 4 bits are "don't care"s, but will default to 0s here)
+.FRMT1_NON_1OPS $r := 0:1 1:2 r:4 .this:5 0:4
+.alias .FRMT1_NON_1OPS 16 jumpr
+
+; Format 1 non-ALU instruction with two 4-bit operands
+.FRMT1_NON_2OPS $d, $s := 0:1 1:2 d:4 .this:5 s:4
+.alias .FRMT1_NON_2OPS 24 load store copy
+
+
+
+; Format 2 with a single 8-bit Qat register operand
+.FRMT2 @a := 0:1 2:2 .this:5 a:8
+not    @a := 0:1 2:2 0x002:5 a:8
+.alias .FRMT2 one zero
+
+
+
+; Format 3 with three 8-bit Qat register operands
+.FRMT3_3QREG @a, @b, @c := 0:1 3:2 .this:5 a:8 c:8 b:8
+and          @a, @b, @c := 0:1 3:2 0x002:5 a:8 c:8 b:8
+or           @a, @b, @c := 0:1 3:2 0x003:5 a:8 c:8 b:8
+xor          @a, @b, @c := 0:1 3:2 0x004:5 a:8 c:8 b:8
+.alias .FRMT3_3QREG ccnot cswap
+
+; Format 3 with two 8-bit Qat register operands (bits 31-24 are "don't care"s, but will default to 0s here)
+.FRMT3_2QREG @a, @b := 0:1 3:2 .this:5 a:8 0:8 b:8
+.alias .FRMT3_2QREG 16 swap cnot
+
+
+
+; Format 4 (bits 12-0 are "don't care"s, but will default to 0s here)
+.FRMT4 := 0:1 0:2 0:13
+.alias .FRMT4 sys
+
+
+
+; Pseudo `br label` - use `brt $sp, label`, since $sp is/should never be zero
+br label := 1:1 (0x3 >> 1):2 sp:4 0x3:1 ((label-.)-1):8
+
+
+
+; Pseudo `jump label` ...
+
+; a) Use `br label` if label is in range
+jump label ?((((label-.)-1) <= 127) && (((label-.)-1) >= -128)) := 1:1 (0x3 >> 1):2 sp:4 0x3:1 ((label-.)-1):8  ; `br label`
+
+; b) Load address into register with only `lex` if possible and then use `jumpr`
+jump label ?((label <= 127) && (label >= -128)) := {
+    1:1 (0x0 >> 1):2 at:4 0x0:1 label:8         ; `lex $at, label`
+    0:1 1:2 at:4 0x10:5 0:4                     ; `jumpr $at`
+}
+
+; c) Otherwise, load address into register with `lex` & `lhi` and then use `jumpr`
+jump label := {
+    1:1 (0x0 >> 1):2 at:4 0x0:1 label:8         ; `lex $at, label`
+    1:1 (0x1 >> 1):2 at:4 0x1:1 (label >> 8):8  ; `lhi $at, label>>8`
+    0:1 1:2 at:4 0x10:5 0:4                     ; `jumpr $at`
+}
+
+
+
+; Pseudo `jumpf $c, label` ...
+
+; a) Use `brf $c, label` if label is in range
+jumpf $c, label ?((((label-.)-1) <= 127) && (((label-.)-1) >= -128)) := 1:1 (0x2 >> 1):2 c:4 0x2:1 ((label-.)-1):8  ; `brf $c, label`
+
+; b) Wrap `jump label` (with `lex`-only load) in an "if"
+jumpf $c, label ?((label <= 127) && (label >= -128)) := {
+    1:1 (0x3 >> 1):2 c:4 0x3:1 (.+2):8          ; `brt $c, .+4`
+    1:1 (0x0 >> 1):2 at:4 0x0:1 label:8         ; `lex $at, label`
+    0:1 1:2 at:4 0x10:5 0:4                     ; `jumpr $at`
+}
+
+; c) Wrap `jump label` (with `lex` & `lhi` load) in an "if"
+jumpf $c, label := {
+    1:1 (0x3 >> 1):2 c:4 0x3:1 (.+3):8          ; `brt $c, .+4`
+    1:1 (0x0 >> 1):2 at:4 0x0:1 label:8         ; `lex $at, label`
+    1:1 (0x1 >> 1):2 at:4 0x1:1 (label >> 8):8  ; `lhi $at, label>>8`
+    0:1 1:2 at:4 0x10:5 0:4                     ; `jumpr $at`
+}
+
+
+
+; Pseudo `jumpt $c, label` ...
+
+; a) Use `brt $c, label` if label is in range
+jumpt $c, label ?((((label-.)-1) <= 127) && (((label-.)-1) >= -128)) := 1:1 (0x3 >> 1):2 c:4 0x3:1 ((label-.)-1):8  ; `brt $c, label`
+
+; b) Wrap `jump label` (with `lex`-only load) in an "if"
+jumpt $c, label ?((label <= 127) && (label >= -128)) := {
+    1:1 (0x2 >> 1):2 c:4 0x2:1 (.+2):8          ; `brf $c, .+4`
+    1:1 (0x0 >> 1):2 at:4 0x0:1 label:8         ; `lex $at, label`
+    0:1 1:2 at:4 0x10:5 0:4                     ; `jumpr $at`
+}
+
+; c) Wrap `jump label` (with `lex` & `lhi` load) in an "if"
+jumpt $c, label := {
+    1:1 (0x2 >> 1):2 c:4 0x2:1 (.+3):8          ; `brf $c, .+4`
+    1:1 (0x0 >> 1):2 at:4 0x0:1 label:8         ; `lex $at, label`
+    1:1 (0x1 >> 1):2 at:4 0x1:1 (label >> 8):8  ; `lhi $at, label>>8`
+    0:1 1:2 at:4 0x10:5 0:4                     ; `jumpr $at`
+}
+
+
+
+; Pseudo `load $d, imm16` - use lex if imm16 is in range, otherwise use lex & lhi combo to load entire imm16
+; (could use lhi if ?((imm & 0xFF) == 0) AND you could guarantee that the least-significant byte of a register was zero,
+; but you can't guarantee the later without an extra instruction, so might as well go ahead and cover the general case)
+load $d, imm ?((imm <= 127) && (imm >= -128)) := 1:1 (0x0 >> 1):2 d:4 0x0:1 imm:8   ; `lex $d, imm`
+load $d, imm := {
+    1:1 (0x0 >> 1):2 d:4 0x0:1 imm:8            ; `lex $d, imm`
+    1:1 (0x1 >> 1):2 d:4 0x1:1 (imm >> 8):8     ; `lhi $d, imm>>8`
+}
+
+
