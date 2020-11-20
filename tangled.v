@@ -106,7 +106,8 @@ module frecip(r, a);
 	input wire `FLOAT a;
     wire `FLOAT NaNWire;
 	reg [6:0] look[127:0];
-	initial $readmemh0(look);   // aggregate.org Icarus Verilog CGI simulator compatible
+	// initial $readmemh0(look);   // aggregate.org Icarus Verilog CGI simulator compatible
+	initial $readmemh("frecip_lookup.vmem", look);
 	assign NaNWire = `NaN;
     assign r `FSIGN = ((a==`NaN) || (a==0) ? NaNWire `FSIGN : a `FSIGN);
 	assign r `FEXP = ((a==`NaN) || (a==0) ? NaNWire `FEXP : 253 + (!(a `FFRAC)) - a `FEXP);
@@ -602,4 +603,41 @@ module PTP(halt, reset, clk);
             regfile[rd3to4Index] <= stage3to4Result; 
         end
     end
+endmodule
+
+module PTP_TB();
+
+	// Observing signals
+	wire halt;
+
+	// Driving signals
+	reg reset = 0;
+	reg clk = 0;
+
+	// Instantiate the Unit Under Test
+	PTP uut (.halt(halt), .reset(reset), .clk(clk));
+
+	// Run the tests
+	initial begin 
+		// $readmemh1(uut.text);	// aggregate.org Icarus Verilog CGI simulator compatible
+		// $dumpfile;				// aggregate.org Icarus Verilog CGI simulator compatible
+		$readmemh("test_cases.text", uut.text);
+		$readmemh("test_cases.data", uut.data);
+		$dumpfile("dump.txt");
+		$dumpvars(0, uut, uut.regfile[0], uut.regfile[1], uut.regfile[2]); // would normally trace 0, PE
+
+		// Put the machine into a known state
+		#5 reset = 1;
+		#5 reset = 0;
+
+		// Step through instructions until the machine is halted
+		while (!halt) begin
+			// Load
+			$display("PC: %4d", uut.pc);
+			#5 clk = 1;
+			#5 clk = 0;
+			$display("IR: %4h", uut.stage1to2ir);
+		end
+	end
+
 endmodule

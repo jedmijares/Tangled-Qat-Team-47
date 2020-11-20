@@ -26,9 +26,12 @@ module PTP_TB();
 
 	// Run the tests
 	initial begin 
-		$readmemh1(uut.text);	// aggregate.org Icarus Verilog CGI simulator compatible
-		$dumpfile;				// aggregate.org Icarus Verilog CGI simulator compatible
-		$dumpvars(2, PTP_TB);
+		// $readmemh1(uut.text);	// aggregate.org Icarus Verilog CGI simulator compatible
+		// $dumpfile;				// aggregate.org Icarus Verilog CGI simulator compatible
+		$readmemh("test_cases.text", uut.text);
+		readmemh("test_cases.data", uut.data);
+		$dumpfile("dump.txt");
+		$dumpvars(0, uut, PTP.r[0], uut.r[1], uut.r[2]); // would normally trace 0, PE
 
 		// Put the machine into a known state
 		#5 reset = 1;
