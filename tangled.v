@@ -24,6 +24,7 @@
 
 // Field definitions
 `define WORD_SIZE   [15:0]  // generic machine word size
+`define QAT_WORD_SIZE [255:0]
 `define INT         signed [15:0]   // integer size
 `define FLOAT       [15:0]  // half-precision float size
 `define FSIGN       [15]    // sign bit
@@ -213,6 +214,7 @@ endmodule
 `define IMEM_SIZE       	[2**16-1:0] // Instruction memory size 
 `define DMEM_SIZE       	[2**16-1:0] // Data memory size
 `define REGFILE_SIZE    	[2**4-1:0]  // The size of the regfile (i.e. 16 regs)
+`define QAT_REGFILE_SIZE	[255:0]
 
 // Format A field & values
 `define FA_FIELD        	[15]
@@ -266,6 +268,9 @@ endmodule
 // Define instruction operands
 `define IR_RD_FIELD         [12:9]
 `define IR_RS_FIELD         [3:0]
+`define IR_RA_FIELD 		[7:0]
+`define IR_RB_FIELD 		[7:0]
+`define IR_RC_FIELD 		[15:8]
 `define IR_ALU_OP_FIELD     [7:4]
 `define IR_IMM8_FIELD       [7:0]
 `define IR_QAT_RA_FIELD     [7:0]
@@ -285,6 +290,7 @@ module PTP(halt, reset, clk);
 	reg `WORD_SIZE data `DMEM_SIZE;         // Data memory
 
 	reg `WORD_SIZE regfile `REGFILE_SIZE;   // Register File
+	reg `QAT_WORD_SIZE Qatregfile `QAT_REGFILE_SIZE;   // Qat Register File
 
 	reg `WORD_SIZE pc;                      // Program counter register
 
@@ -302,6 +308,9 @@ module PTP(halt, reset, clk);
     reg sys3to4Flag;
     reg `WORD_SIZE rd2to3Value;
     reg `WORD_SIZE rs2to3Value;
+	reg `QAT_WORD_SIZE ra2to3Value;
+	reg `QAT_WORD_SIZE rb2to3Value;
+	reg `QAT_WORD_SIZE rc2to3Value;
     reg `WORD_SIZE stage3to4Result;
     reg stage3to4Write;
     reg [3:0] rd3to4Index;
@@ -312,6 +321,8 @@ module PTP(halt, reset, clk);
 	// Define some instruction operands
 	// (Not necessay, but easier to read/use than having macros everywhere)
 	wire [3:0] rdIndex, rsIndex;
+	wire [7:0] raIndex, rbIndex, rcIndex;
+	reg [7:0] ra2to3Index;
 	wire [3:0] aluOp;
 	wire [7:0] imm8;
 	assign imm8 = stage1to2ir`IR_IMM8_FIELD;
@@ -324,6 +335,9 @@ module PTP(halt, reset, clk);
 	assign aluOp = stage2to3ir `IR_ALU_OP_FIELD;
 	assign rdIndex = stage1to2ir `IR_RD_FIELD;
     assign rsIndex = stage1to2ir `IR_RS_FIELD;
+	assign raIndex = stage1to2ir `IR_RA_FIELD;
+	assign rbIndex = stage1to2ir `IR_RB_FIELD;
+	assign rcIndex = stage1to2ir `IR_RC_FIELD;
 
 	// Instantiate the ALU
 	wire `WORD_SIZE aluOut;
@@ -464,12 +478,17 @@ module PTP(halt, reset, clk);
 							stage2to3ir2 <= `noop;
 						end
 						//Check if its 32 or 16 bit instruction.
-						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F3))
+						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
 						begin
 							sys2to3Flag <= 1;
-							branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-							stage2to3ir <= `noop;
-							stage2to3ir2 <= `noop;
+							// branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
+							stage2to3ir <= stage1to2ir;
+							stage2to3ir2 <= stage1to2ir2;
+							// rd2to3Value <= regfile[rdIndex];
+							ra2to3Value <= Qatregfile[raIndex];
+							rb2to3Value <= Qatregfile[rbIndex];
+							rc2to3Value <= Qatregfile[rcIndex];
+							// rs2to3Value <= regfile[rsIndex];
 						end
 						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
 						begin
@@ -526,6 +545,13 @@ module PTP(halt, reset, clk);
 			stage3to4Write <= 0;
 			stage3to4Result <= 0;
 			rd3to4Index <= 0;
+		end
+
+		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
+		begin
+			if (stage2to3ir[12:8] == 2) begin // Qat AND
+				Qatregfile[]
+			end
 		end
         else
         begin
