@@ -339,6 +339,9 @@ module PTP(halt, reset, clk);
 	assign rbIndex = stage1to2ir `IR_RB_FIELD;
 	assign rcIndex = stage1to2ir `IR_RC_FIELD;
 
+	wire `QAT_WORD_SIZE swapPlace;
+	wire `QAT_WORD_SIZE swapPlace2;
+
 	// Instantiate the ALU
 	wire `WORD_SIZE aluOut;
 	ALU alu(.out(aluOut), .op(aluOp), .x(rd2to3Value), .y(rs2to3Value));
@@ -442,8 +445,9 @@ module PTP(halt, reset, clk);
 				else
 				begin
 					// Check for RAW dependencies and insert noops
-					if (((stage2to3ir != `noop) && ((rdIndex == stage2to3ir`IR_RD_FIELD) || (rsIndex == stage2to3ir`IR_RD_FIELD))) || (stage3to4Write && ((rdIndex == rd3to4Index) || (rsIndex == rd3to4Index))))
+					if ((((stage2to3ir != `noop) && ((rdIndex == stage2to3ir`IR_RD_FIELD) || (rsIndex == stage2to3ir`IR_RD_FIELD))) || (stage3to4Write && ((rdIndex == rd3to4Index) || (rsIndex == rd3to4Index))) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2))))
 					begin
+						// $display("qwer");
 						branchJumpHaltFlag <= 3; // Stop pc from incrementing
 						rd2to3Value <= 0; // Won't have valid data
 						rs2to3Value <= 0; // Won't have valid data
@@ -480,8 +484,8 @@ module PTP(halt, reset, clk);
 						//Check if its 32 or 16 bit instruction.
 						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
 						begin
-							sys2to3Flag <= 1;
-							// branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
+							sys2to3Flag <= 0;
+							branchJumpHaltFlag <= 0; // Setting sys call flag for QAT instructions.
 							stage2to3ir <= stage1to2ir;
 							stage2to3ir2 <= stage1to2ir2;
 							// rd2to3Value <= regfile[rdIndex];
@@ -490,34 +494,34 @@ module PTP(halt, reset, clk);
 							rc2to3Value <= Qatregfile[rcIndex];
 							// rs2to3Value <= regfile[rsIndex];
 						end
-						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
-						begin
-							sys2to3Flag <= 1;
-							branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-							stage2to3ir <= `noop;
-							stage2to3ir2 <= `noop;
-						end
-						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_MEAS)) //Qat Meas instruction
-						begin
-							sys2to3Flag <= 1;
-							branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-							stage2to3ir <= `noop;
-							stage2to3ir2 <= `noop;
-						end
-						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_HAD)) //Qat Meas instruction
-						begin
-							sys2to3Flag <= 1;
-							branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-							stage2to3ir <= `noop;
-							stage2to3ir2 <= `noop;
-						end
-						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_NEXT)) //Qat Meas instruction
-						begin
-							sys2to3Flag <= 1;
-							branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-							stage2to3ir <= `noop;
-							stage2to3ir2 <= `noop;
-						end
+						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
+						// begin
+						// 	sys2to3Flag <= 1;
+						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
+						// 	stage2to3ir <= `noop;
+						// 	stage2to3ir2 <= `noop;
+						// end
+						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_MEAS)) //Qat Meas instruction
+						// begin
+						// 	sys2to3Flag <= 1;
+						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
+						// 	stage2to3ir <= `noop;
+						// 	stage2to3ir2 <= `noop;
+						// end
+						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_HAD)) //Qat Meas instruction
+						// begin
+						// 	sys2to3Flag <= 1;
+						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
+						// 	stage2to3ir <= `noop;
+						// 	stage2to3ir2 <= `noop;
+						// end
+						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_NEXT)) //Qat Meas instruction
+						// begin
+						// 	sys2to3Flag <= 1;
+						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
+						// 	stage2to3ir <= `noop;
+						// 	stage2to3ir2 <= `noop;
+						// end
 						else
 						begin
 							branchJumpHaltFlag <= 0;
@@ -531,6 +535,9 @@ module PTP(halt, reset, clk);
 			end
         end
     end
+
+	assign swapPlace = Qatregfile[stage2to3ir`IR_QAT_RA_FIELD];
+	assign swapPlace2 = Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD];
 
     // Stage 3: ReadMem and ALU
     always @(posedge clk) begin
@@ -550,7 +557,26 @@ module PTP(halt, reset, clk);
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
 		begin
 			if (stage2to3ir[12:8] == 2) begin // Qat AND
-				Qatregfile[]
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] & Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
+			end
+			else if (stage2to3ir[12:8] == 3) begin // Qat OR
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] | Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
+			end
+			else if (stage2to3ir[12:8] == 16) begin // Qat SWAP
+				// Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] | Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= swapPlace2;
+				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= swapPlace;
+			end
+		end
+		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
+		begin
+			$display("2345");
+			if (stage2to3ir[12:8] == 0) begin // Qat ONE
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+			end
+			if (stage2to3ir[12:8] == 1) begin // Qat ZERO
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'h0000000000000000000000000000000000000000;
+				$display("asdf");
 			end
 		end
         else
@@ -650,7 +676,7 @@ module PTP_TB();
 		$readmemh("test_cases.text", uut.text);
 		$readmemh("test_cases.data", uut.data);
 		$dumpfile("dump.txt");
-		$dumpvars(0, uut, uut.regfile[0], uut.regfile[1], uut.regfile[2]); // would normally trace 0, PE
+		$dumpvars(0, uut, uut.regfile[0], uut.regfile[1], uut.regfile[2], uut.Qatregfile[0], uut.Qatregfile[1], uut.Qatregfile[2]); // would normally trace 0, PE
 
 		// Put the machine into a known state
 		#5 reset = 1;

@@ -4,3 +4,5 @@ tangled
 *.text
 
 *.data
+
+dump.txt
