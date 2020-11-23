@@ -563,9 +563,12 @@ module PTP(halt, reset, clk);
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] | Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
 			end
 			else if (stage2to3ir[12:8] == 16) begin // Qat SWAP
-				// Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] | Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= swapPlace2;
 				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= swapPlace;
+			end
+			else if (stage2to3ir[12:8] == 17) begin // Qat CNOT
+				$display("1234asdfzxcv");
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] ^ Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD]);
 			end
 		end
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
