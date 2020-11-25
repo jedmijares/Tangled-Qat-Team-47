@@ -1,5 +1,6 @@
-	had @2, 7
-	one @1
-	zero @0
-	cswap @0, @1, @2
+	had @0, 0
+	load $0, 0
+	load $1, 1
+	meas $0, @0
+	meas $1, @0
 	sys

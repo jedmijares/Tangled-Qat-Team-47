@@ -568,6 +568,9 @@ module PTP(halt, reset, clk);
 			else if (stage2to3ir[12:8] == `F3_OP_OR) begin // Qat OR
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] | Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
 			end
+			else if (stage2to3ir[12:8] == `F3_OP_XOR) begin
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] ^ Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
+			end
 			else if (stage2to3ir[12:8] == `F3_OP_SWAP) begin // Qat SWAP
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= swapPlace2;
 				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= swapPlace;
@@ -586,14 +589,17 @@ module PTP(halt, reset, clk);
 		end
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
 		begin
-			if (stage2to3ir[12:8] == `F2_OP_ONE) begin // Qat ONE
+			if (stage2to3ir[12:8] == `F2_OP_ONE) begin
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 			end
-			if (stage2to3ir[12:8] == `F2_OP_ZERO) begin // Qat ZERO
+			else if (stage2to3ir[12:8] == `F2_OP_ZERO) begin
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'h0;
 			end
+			else if (stage2to3ir[12:8] == `F2_OP_NOT) begin
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= ~Qatregfile[stage2to3ir`IR_QAT_RA_FIELD];
+			end
 		end
-		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_HAD) //16 bit Qat instructions
+		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_HAD)
 		begin
 			case (stage2to3ir `IR_IMM4_FIELD)
 			0: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b1}}, {1{1'b0}}}}; 
@@ -606,6 +612,10 @@ module PTP(halt, reset, clk);
 			7: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {1{{128{1'b1}}, {128{1'b0}}}}; 
 			default: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b0}}, {1{1'b0}}}};
 			endcase
+		end
+		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_MEAS)
+		begin
+			regfile[rd2to3Index] <= Qatregfile[stage2to3ir`IR_QAT_RA_FIELD][regfile[rd2to3Index]];
 		end
         else
         begin
