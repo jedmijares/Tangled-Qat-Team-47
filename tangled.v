@@ -567,19 +567,16 @@ module PTP(halt, reset, clk);
 				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= swapPlace;
 			end
 			else if (stage2to3ir[12:8] == 17) begin // Qat CNOT
-				$display("1234asdfzxcv");
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] ^ Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD]);
 			end
 		end
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
 		begin
-			$display("2345");
 			if (stage2to3ir[12:8] == 0) begin // Qat ONE
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 			end
 			if (stage2to3ir[12:8] == 1) begin // Qat ZERO
-				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'h0000000000000000000000000000000000000000;
-				$display("asdf");
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'h0;
 			end
 		end
         else
