@@ -585,14 +585,15 @@ module PTP(halt, reset, clk);
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_HAD) //16 bit Qat instructions
 		begin
 			case (stage2to3ir `IR_IMM4_FIELD)
-			0:
-				begin
-					Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b1}}, {1{1'b0}}}};
-				end 
-			default: 
-				begin
-					Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b0}}, {1{1'b0}}}};
-				end 
+			0: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b1}}, {1{1'b0}}}}; 
+			1: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {64{{2{1'b1}}, {2{1'b0}}}}; 
+			2: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {32{{4{1'b1}}, {4{1'b0}}}}; 
+			3: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {16{{8{1'b1}}, {8{1'b0}}}}; 
+			4: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {8{{16{1'b1}}, {16{1'b0}}}}; 
+			5: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {4{{32{1'b1}}, {32{1'b0}}}}; 
+			6: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {2{{64{1'b1}}, {64{1'b0}}}}; 
+			7: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {1{{128{1'b1}}, {128{1'b0}}}}; 
+			default: Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b0}}, {1{1'b0}}}};
 			endcase
 		end
         else
