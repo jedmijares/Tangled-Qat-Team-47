@@ -1,25 +1,5 @@
-	had @0, 0
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 1
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 2
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 3
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 4
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 5
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 6
-	lhi $1, 1
-	lhi $1, 1
-	had @0, 7
-	lhi $1, 1
-	lhi $1, 1
+	had @2, 7
+	one @1
+	zero @0
+	cswap @0, @1, @2
 	sys

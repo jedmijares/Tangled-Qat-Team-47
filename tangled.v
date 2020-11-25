@@ -342,6 +342,9 @@ module PTP(halt, reset, clk);
 
 	wire `QAT_WORD_SIZE swapPlace;
 	wire `QAT_WORD_SIZE swapPlace2;
+	wire `QAT_WORD_SIZE cSwapPlaceA;
+	wire `QAT_WORD_SIZE cSwapPlaceB;
+	wire `QAT_WORD_SIZE cSwapPlaceC;
 
 	// Instantiate the ALU
 	wire `WORD_SIZE aluOut;
@@ -538,6 +541,9 @@ module PTP(halt, reset, clk);
 
 	assign swapPlace = Qatregfile[stage2to3ir`IR_QAT_RA_FIELD];
 	assign swapPlace2 = Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD];
+	assign cSwapPlaceA = Qatregfile[stage2to3ir`IR_QAT_RA_FIELD];
+	assign cSwapPlaceB = Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD];
+	assign cSwapPlaceC = Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD];
 
     // Stage 3: ReadMem and ALU
     always @(posedge clk) begin
@@ -565,6 +571,11 @@ module PTP(halt, reset, clk);
 			else if (stage2to3ir[12:8] == `F3_OP_SWAP) begin // Qat SWAP
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= swapPlace2;
 				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= swapPlace;
+			end
+			else if (stage2to3ir[12:8] == `F3_OP_CSWAP) begin // Qat CSWAP
+				//     (c&b) | ((~c) & a) 
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= ((cSwapPlaceC & cSwapPlaceB) | ((~cSwapPlaceC) & cSwapPlaceA));
+				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= ((cSwapPlaceC & cSwapPlaceA) | ((~cSwapPlaceC) & cSwapPlaceB));
 			end
 			else if (stage2to3ir[12:8] == `F3_OP_CNOT) begin // Qat CNOT
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] ^ Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD]);
