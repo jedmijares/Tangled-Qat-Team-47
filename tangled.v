@@ -260,7 +260,7 @@ endmodule
 `define F3_OP_CCNOT         0
 `define F3_OP_CSWAP         1
 `define F3_OP_AND           2
-`define F3_OP_OP            3
+`define F3_OP_OR            3
 `define F3_OP_XOR           4
 `define F3_OP_SWAP          16
 `define F3_OP_CNOT          17
@@ -447,7 +447,6 @@ module PTP(halt, reset, clk);
 					// Check for RAW dependencies and insert noops
 					if (((stage2to3ir != `noop) && ((rdIndex == stage2to3ir`IR_RD_FIELD) || (rsIndex == stage2to3ir`IR_RD_FIELD)) || (stage3to4Write && ((rdIndex == rd3to4Index) || (rsIndex == rd3to4Index)))) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)))
 					begin
-						// $display("qwer");
 						branchJumpHaltFlag <= 3; // Stop pc from incrementing
 						rd2to3Value <= 0; // Won't have valid data
 						rs2to3Value <= 0; // Won't have valid data
@@ -556,26 +555,29 @@ module PTP(halt, reset, clk);
 
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
 		begin
-			if (stage2to3ir[12:8] == 2) begin // Qat AND
+			if (stage2to3ir[12:8] == `F3_OP_AND) begin // Qat AND
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] & Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
 			end
-			else if (stage2to3ir[12:8] == 3) begin // Qat OR
+			else if (stage2to3ir[12:8] == `F3_OP_OR) begin // Qat OR
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] | Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]);
 			end
-			else if (stage2to3ir[12:8] == 16) begin // Qat SWAP
+			else if (stage2to3ir[12:8] == `F3_OP_SWAP) begin // Qat SWAP
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= swapPlace2;
 				Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] <= swapPlace;
 			end
-			else if (stage2to3ir[12:8] == 17) begin // Qat CNOT
+			else if (stage2to3ir[12:8] == `F3_OP_CNOT) begin // Qat CNOT
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] ^ Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD]);
+			end
+			else if (stage2to3ir[12:8] == `F3_OP_CCNOT) begin // Qat CCNOT
+				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= (Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] ^ (Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD] & Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD]));
 			end
 		end
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
 		begin
-			if (stage2to3ir[12:8] == 0) begin // Qat ONE
+			if (stage2to3ir[12:8] == `F2_OP_ONE) begin // Qat ONE
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 			end
-			if (stage2to3ir[12:8] == 1) begin // Qat ZERO
+			if (stage2to3ir[12:8] == `F2_OP_ZERO) begin // Qat ZERO
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'h0;
 			end
 		end
