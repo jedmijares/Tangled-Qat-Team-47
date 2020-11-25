@@ -272,6 +272,7 @@ endmodule
 `define IR_RB_FIELD 		[7:0]
 `define IR_RC_FIELD 		[15:8]
 `define IR_ALU_OP_FIELD     [7:4]
+`define IR_IMM4_FIELD       [12:9]
 `define IR_IMM8_FIELD       [7:0]
 `define IR_QAT_RA_FIELD     [7:0]
 `define IR2_QAT_RB_FIELD    [7:0]
@@ -580,6 +581,19 @@ module PTP(halt, reset, clk);
 			if (stage2to3ir[12:8] == `F2_OP_ZERO) begin // Qat ZERO
 				Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= 256'h0;
 			end
+		end
+		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_HAD) //16 bit Qat instructions
+		begin
+			case (stage2to3ir `IR_IMM4_FIELD)
+			0:
+				begin
+					Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b1}}, {1{1'b0}}}};
+				end 
+			default: 
+				begin
+					Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] <= {128{{1{1'b0}}, {1{1'b0}}}};
+				end 
+			endcase
 		end
         else
         begin
