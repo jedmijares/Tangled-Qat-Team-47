@@ -1,12 +1,4 @@
 	one @1
-	lhi $1, 1
-	lhi $1, 1
-	; lhi $1, 1
-	; lhi $1, 1
 	zero @0
-	lhi $1, 1
-	lhi $1, 1
 	cnot @0, @1
-	lhi $1, 1
-	lhi $1, 1
 	sys

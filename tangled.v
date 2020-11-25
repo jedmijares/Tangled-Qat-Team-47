@@ -445,7 +445,7 @@ module PTP(halt, reset, clk);
 				else
 				begin
 					// Check for RAW dependencies and insert noops
-					if ((((stage2to3ir != `noop) && ((rdIndex == stage2to3ir`IR_RD_FIELD) || (rsIndex == stage2to3ir`IR_RD_FIELD))) || (stage3to4Write && ((rdIndex == rd3to4Index) || (rsIndex == rd3to4Index))) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2))))
+					if (((stage2to3ir != `noop) && ((rdIndex == stage2to3ir`IR_RD_FIELD) || (rsIndex == stage2to3ir`IR_RD_FIELD)) || (stage3to4Write && ((rdIndex == rd3to4Index) || (rsIndex == rd3to4Index)))) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F3)) && !((stage2to3ir `FA_FIELD == `FA_FIELD_F1to4) && (stage2to3ir `FB_FIELD == `FB_FIELD_F2)))
 					begin
 						// $display("qwer");
 						branchJumpHaltFlag <= 3; // Stop pc from incrementing
