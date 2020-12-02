@@ -1,107 +1,26 @@
-	zero @0
-	load $0, 255
-	meas $0, @0
-	brf $0, label22
-	sys
-label22:
-	one @0
-	load $0, 0
-	meas $0, @0
-	brt $0, label23
-	sys
-label23:
 	had @0, 7
-	load $0, 0
-	load $1, 128
-	meas $0, @0
-	meas $1, @0
-	and $1, $0
-	brf $1, label24
-	sys
-label24:
-	had @0, 7
-	not @0
-	load $0, 0
-	meas $0, @0
-	brt $0, label25
-	sys
-label25:
-	had @0, 7
-	one @1
-	and @2, @1, @0
-	load $0, 128
-	meas $0, @2
-	brt $0, label26
-	sys
-label26:
-	had @0, 7
-	one @1
-	or @2, @1, @0
-	load $0, 0
-	meas $0, @2
-	brt $0, label27
-	sys
-label27:
-	had @0, 7
-	one @1
-	xor @2, @1, @0
-	load $0, 128
-	meas $0, @2
-	brf $0, label28
-	sys
-label28:
-	had @0, 7
-	one @1
-	cnot @1, @0
-	load $0, 128
-	meas $0, @1
-	brf $0, label29
-	sys
-label29:
-	had @0, 7
-	one @1
-	had @2, 0
-	ccnot @1, @0, @2
-	load $0, 128
-	meas $0, @1
-	brt $0, label30
-	sys
-label30:
-	zero @0
-	one @1
-	had @2, 7
-	cswap @0, @1, @2
-	load $0, 128
-	load $1, 128
-	meas $0, @1
-	meas $1, @0
-	and $1, $0
-	brf $1, label31
-	sys
-label31:
-	zero @0
-	one @1
-	swap @0, @1
-	load $0, 0
-	load $1, 0
-	load $2, 1
-	load $3, 0
-	meas $0, @1
-	meas $1, @0
-	or $3, $0
-	and $2, $1
-	xor $2, $3
-	brt $2, label32
-	sys
-label32:
-	had @0, 7
-	load $0, 0
-	load $1, 128
+	load $0, 15
+	load $1, 113
+	add $1, $0
 	next $0, @0
-	or $3, $0
 	xor $0, $1
 	brf $0, label33
 	sys
 label33:
+	one @0
+	load $0, 15
+	load $1, 16
+	next $0, @0
+	xor $0, $1
+	brf $0, label34
 	sys
-	
+label34:
+	zero @0
+	load $0, 15
+	load $1, 0
+	next $0, @0
+	xor $0, $1
+	brf $0, label35
+	sys
+label35:
+	sys

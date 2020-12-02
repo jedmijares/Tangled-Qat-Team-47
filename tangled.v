@@ -25,6 +25,7 @@
 // Field definitions
 `define WORD_SIZE   [15:0]  // generic machine word size
 `define QAT_WORD_SIZE [255:0]
+`define INVERTED_QAT_WORD_SIZE [0:255]
 `define INT         signed [15:0]   // integer size
 `define FLOAT       [15:0]  // half-precision float size
 `define FSIGN       [15]    // sign bit
@@ -52,6 +53,30 @@ module lead0s(d, s);
 	assign {t[1],s2} = ((|s4[3:2]) ? {1'b0,s4[3:2]} : {1'b1,s4[1:0]});
 	assign t[0] = !s2[1];
 	assign d = (s ? t : 16);
+endmodule
+
+// Count trailing zeros, 256-bit
+module traling0s(d, s);
+	output wire [8:0] d;
+	input wire `QAT_WORD_SIZE s;
+	wire [8:0] t;
+	wire [127:0] s128;
+	wire [63:0] s64;
+	wire [31:0] s32;
+	wire [15:0] s16;
+	wire [7:0] s8;
+	wire [3:0] s4;
+	wire [1:0] s2;
+	assign t[8] = 0;
+	assign {t[7],s128} = ((|s[127:0]) ? {1'b0,s[127:0]} : {1'b1,s[255:128]});
+	assign {t[6],s64} = ((|s128[63:0]) ? {1'b0,s128[63:0]} : {1'b1,s128[127:64]});
+	assign {t[5],s32} = ((|s64[31:0]) ? {1'b0,s64[31:0]} : {1'b1,s64[63:32]});
+	assign {t[4],s16} = ((|s32[15:0]) ? {1'b0,s32[15:0]} : {1'b1,s32[31:16]});
+	assign {t[3],s8} = ((|s16[7:0]) ? {1'b0,s16[7:0]} : {1'b1,s16[15:8]});
+	assign {t[2],s4} = ((|s8[3:0]) ? {1'b0,s8[3:0]} : {1'b1,s8[7:4]});
+	assign {t[1],s2} = ((|s4[1:0]) ? {1'b0,s4[1:0]} : {1'b1,s4[3:2]});
+	assign t[0] = !s2[1];
+	assign d = (|s ? t+1 : 0);
 endmodule
 
 // Float set-less-than, 16-bit (1-bit result) torf=a<b
@@ -342,6 +367,10 @@ module PTP(halt, reset, clk);
 	wire `QAT_WORD_SIZE cSwapPlaceA;
 	wire `QAT_WORD_SIZE cSwapPlaceB;
 	wire `QAT_WORD_SIZE cSwapPlaceC;
+	wire `QAT_WORD_SIZE shiftedA;
+	wire `WORD_SIZE ending0s;
+
+	traling0s lead(ending0s, shiftedA);
 
 	// Instantiate the ALU
 	wire `WORD_SIZE aluOut;
@@ -500,6 +529,7 @@ module PTP(halt, reset, clk);
 	assign cSwapPlaceA = Qatregfile[stage2to3ir`IR_QAT_RA_FIELD];
 	assign cSwapPlaceB = Qatregfile[stage2to3ir2`IR2_QAT_RB_FIELD];
 	assign cSwapPlaceC = Qatregfile[stage2to3ir2`IR2_QAT_RC_FIELD];
+	assign shiftedA = Qatregfile[stage2to3ir`IR_QAT_RA_FIELD] >> rd2to3Value;
 
     // Stage 3: ReadMem and ALU
     always @(posedge clk) begin
@@ -571,7 +601,16 @@ module PTP(halt, reset, clk);
 		end
 		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_MEAS)
 		begin
-			regfile[rd2to3Index] <= Qatregfile[stage2to3ir`IR_QAT_RA_FIELD][regfile[rd2to3Index]];
+			regfile[rd2to3Index] <= Qatregfile[stage2to3ir`IR_QAT_RA_FIELD][rd2to3Value];
+		end
+		else if ((stage2to3ir `FA_FIELD == `FA_FIELD_F0) && {stage2to3ir`F0_OP_FIELD_HIGH, stage2to3ir`F0_OP_FIELD_LOW} == `F0_OP_NEXT)
+		begin
+			if (|ending0s) begin
+				regfile[rd2to3Index] <= ending0s + rd2to3Value;
+			end
+			else begin
+				regfile[rd2to3Index] <= 0;
+			end
 		end
         else
         begin
