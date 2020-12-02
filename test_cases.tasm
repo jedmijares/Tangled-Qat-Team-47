@@ -1,5 +1,5 @@
 	zero @0
-	load $0, 0xffff
+	load $0, 255
 	meas $0, @0
 	brf $0, label22
 	sys
