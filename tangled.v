@@ -299,7 +299,7 @@ module PTP(halt, reset, clk);
     wire `WORD_SIZE stage1to2iwire;
     wire `WORD_SIZE stage1to2iwire2;
     reg `WORD_SIZE stage1to2ir;
-    reg `WORD_SIZE stage1to2ir2;            // Instruction register 2 (top 16 bits for 32-bit instructions)
+    reg `WORD_SIZE stage2ir1temp;            // Instruction register 2 (top 16 bits for 32-bit instructions)
     reg [1:0] branchJumpHaltFlag;
     reg `WORD_SIZE offset;
     reg `WORD_SIZE jumpDest;
@@ -318,27 +318,24 @@ module PTP(halt, reset, clk);
 	wire [3:0] rd2to3Index;
 	assign rd2to3Index = stage2to3ir `IR_RD_FIELD;
 	reg movePCBackTwo;
+	reg 32QatFlag;
 
 	// Define some instruction operands
 	// (Not necessay, but easier to read/use than having macros everywhere)
 	wire [3:0] rdIndex, rsIndex;
-	wire [7:0] raIndex, rbIndex, rcIndex;
+	//wire [7:0] raIndex, rbIndex, rcIndex;
 	reg [7:0] ra2to3Index;
 	wire [3:0] aluOp;
 	wire [7:0] imm8;
 	assign imm8 = stage1to2ir`IR_IMM8_FIELD;
 	wire [7:0] stage3imm8;
 	assign stage3imm8 = stage2to3ir`IR_IMM8_FIELD;
-	wire [7:0] qraIndex, qrbIndex, qrcIndex;
-	assign qraIndex = stage1to2ir `IR_QAT_RA_FIELD;
-    assign qrbIndex = stage1to2ir2 `IR2_QAT_RB_FIELD;
-	assign qrcIndex = stage1to2ir2 `IR2_QAT_RC_FIELD;
 	assign aluOp = stage2to3ir `IR_ALU_OP_FIELD;
 	assign rdIndex = stage1to2ir `IR_RD_FIELD;
     assign rsIndex = stage1to2ir `IR_RS_FIELD;
-	assign raIndex = stage1to2ir `IR_RA_FIELD;
-	assign rbIndex = stage1to2ir `IR_RB_FIELD;
-	assign rcIndex = stage1to2ir `IR_RC_FIELD;
+	//assign raIndex = stage1to2ir `IR_RA_FIELD;
+	//assign rbIndex = stage1to2ir `IR_RB_FIELD;
+	//assign rcIndex = stage1to2ir `IR_RC_FIELD;
 
 	wire `QAT_WORD_SIZE swapPlace;
 	wire `QAT_WORD_SIZE swapPlace2;
@@ -351,12 +348,11 @@ module PTP(halt, reset, clk);
 	ALU alu(.out(aluOut), .op(aluOp), .x(rd2to3Value), .y(rs2to3Value));
 
     assign stage1to2iwire = text[pc];
-    assign stage1to2iwire2 = text[pc +1];
 
     always @(posedge reset) begin
 		halt = 0;
         stage1to2ir = `noop;
-        stage1to2ir2 = `noop;
+        stage2ir1temp = `noop;
         stage2to3ir = `noop;
         stage2to3ir2 = `noop;
         pc = 0;
@@ -372,38 +368,20 @@ module PTP(halt, reset, clk);
         if (branchJumpHaltFlag == 0)
         begin
             // Set a value for instruction register that can be read by Stage 2  
-
-            if ((stage1to2iwire `FA_FIELD == 0) && (stage1to2iwire `FB_FIELD == 3)) // 32 bit QAT instructions
-            begin
-                pc <= pc + 2;
-                stage1to2ir <= stage1to2iwire;
-                stage1to2ir2 <= stage1to2iwire2;
-            end
-            else
-            begin
-                pc <= pc + 1;
-                stage1to2ir <= stage1to2iwire;
-                stage1to2ir2 <= `noop;
-            end
+            pc <= pc + 1;
+            stage1to2ir <= stage1to2iwire;
         end
         if (branchJumpHaltFlag == 1) // If branch
         begin
-			if ((stage1to2ir `FA_FIELD == 0) && (stage1to2ir `FB_FIELD == 3)) //If last instruction was 32 bit QAT instructions
-			begin
-				pc <= pc + offset - 2; // -2 since pc incremented by 2 last clock cycle
-			end
-			else
 			begin
             	pc <= pc + offset - 1; // -1 since pc incremented last clock cycle
 			end
 			stage1to2ir <= `noop;
-            stage1to2ir2 <= `noop;
         end
         if (branchJumpHaltFlag == 2) //If jump
         begin
             pc <= jumpDest;
             stage1to2ir <= `noop;
-            stage1to2ir2 <= `noop;
         end
         if (branchJumpHaltFlag == 3) //If halt
         begin
@@ -414,19 +392,28 @@ module PTP(halt, reset, clk);
 			end
             //Do nothing
             stage1to2ir <= `noop;
-            stage1to2ir2 <= `noop;
         end
     end
 
     // Stage 2: Register Read
     always @(posedge clk) begin
-        //stage2to3ir <= stage1to2ir;
-        //stage2to3ir2 <= stage1to2ir2;
         // Make sure IR is not on a NOOP
         if (stage1to2ir == `noop) //What is starting value of PC? worried about first cycle when PC has not been given an increment 
         begin
             // Do nothing
         end
+		else if (32QatFlag) // Waiting for second half of 32 bit Qat instruction
+		begin
+			32QatFlag <= 0;
+			sys2to3Flag <= 0;
+			branchJumpHaltFlag <= 0;
+			stage2ir1temp <= `noop;
+			stage2to3ir <= stage2ir1temp;
+			stage2to3ir2 <= stage1to2ir;
+			//ra2to3Value <= Qatregfile[raIndex];
+			//rb2to3Value <= Qatregfile[rbIndex];
+			//rc2to3Value <= Qatregfile[rcIndex];
+		end
         else
         begin
 			if (branchJumpHaltFlag) // Ignore instruction from stage 1 if branching, jumping, or halting
@@ -484,47 +471,16 @@ module PTP(halt, reset, clk);
 							stage2to3ir <= `noop;
 							stage2to3ir2 <= `noop;
 						end
-						//Check if its 32 or 16 bit instruction.
+						//Check if its 32 bit instruction.
 						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
 						begin
+							32QatFlag <= 1; //Mark that next instruction is bottom half of this 32 bit instruction
 							sys2to3Flag <= 0;
-							branchJumpHaltFlag <= 0; // Setting sys call flag for QAT instructions.
-							stage2to3ir <= stage1to2ir;
-							stage2to3ir2 <= stage1to2ir2;
-							// rd2to3Value <= regfile[rdIndex];
-							ra2to3Value <= Qatregfile[raIndex];
-							rb2to3Value <= Qatregfile[rbIndex];
-							rc2to3Value <= Qatregfile[rcIndex];
-							// rs2to3Value <= regfile[rsIndex];
+							branchJumpHaltFlag <= 0;
+							stage2ir1temp <= stage1to2ir; //Store top half of instruction to use in next clock cycle
+							stage2to3ir <= `noop; //Pass on a noop
+							stage2to3ir2 <= `noop;
 						end
-						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F2)) //16 bit Qat instructions
-						// begin
-						// 	sys2to3Flag <= 1;
-						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-						// 	stage2to3ir <= `noop;
-						// 	stage2to3ir2 <= `noop;
-						// end
-						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_MEAS)) //Qat Meas instruction
-						// begin
-						// 	sys2to3Flag <= 1;
-						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-						// 	stage2to3ir <= `noop;
-						// 	stage2to3ir2 <= `noop;
-						// end
-						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_HAD)) //Qat Meas instruction
-						// begin
-						// 	sys2to3Flag <= 1;
-						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-						// 	stage2to3ir <= `noop;
-						// 	stage2to3ir2 <= `noop;
-						// end
-						// else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F0) && ({stage1to2ir`F0_OP_FIELD_HIGH, stage1to2ir`F0_OP_FIELD_LOW} == `F0_OP_NEXT)) //Qat Meas instruction
-						// begin
-						// 	sys2to3Flag <= 1;
-						// 	branchJumpHaltFlag <= 3; // Setting sys call flag for QAT instructions.
-						// 	stage2to3ir <= `noop;
-						// 	stage2to3ir2 <= `noop;
-						// end
 						else
 						begin
 							branchJumpHaltFlag <= 0;
