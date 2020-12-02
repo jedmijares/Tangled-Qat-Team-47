@@ -318,7 +318,7 @@ module PTP(halt, reset, clk);
 	wire [3:0] rd2to3Index;
 	assign rd2to3Index = stage2to3ir `IR_RD_FIELD;
 	reg movePCBackTwo;
-	reg 32QatFlag;
+	reg QatFlag32;
 
 	// Define some instruction operands
 	// (Not necessay, but easier to read/use than having macros everywhere)
@@ -402,9 +402,9 @@ module PTP(halt, reset, clk);
         begin
             // Do nothing
         end
-		else if (32QatFlag) // Waiting for second half of 32 bit Qat instruction
+		else if (QatFlag32) // Waiting for second half of 32 bit Qat instruction
 		begin
-			32QatFlag <= 0;
+			QatFlag32 <= 0;
 			sys2to3Flag <= 0;
 			branchJumpHaltFlag <= 0;
 			stage2ir1temp <= `noop;
@@ -474,7 +474,7 @@ module PTP(halt, reset, clk);
 						//Check if its 32 bit instruction.
 						else if ((stage1to2ir `FA_FIELD == `FA_FIELD_F1to4) && (stage1to2ir `FB_FIELD == `FB_FIELD_F3)) //32 bit Qat instructions
 						begin
-							32QatFlag <= 1; //Mark that next instruction is bottom half of this 32 bit instruction
+							QatFlag32 <= 1; //Mark that next instruction is bottom half of this 32 bit instruction
 							sys2to3Flag <= 0;
 							branchJumpHaltFlag <= 0;
 							stage2ir1temp <= stage1to2ir; //Store top half of instruction to use in next clock cycle
