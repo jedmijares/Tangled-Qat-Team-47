@@ -1,12 +1,13 @@
 /*
 * 
-*      Authors: Chris Butler, Matthew Castle, Blair Hall
-*         File: tangledP.v
-*      Project: Assignment 3 - "Pipelined Tangled"
-*      Created: 05 November 2020
+*      Authors: Gerard Mijares, Christopher Butler, Madankrishna Acharya, Malik Allahham
+*         File: tangled.v
+*      Project: Assignment 4 - "Pipelined Tangled + Qat"
+*      Created: 02 December 2020
 * 
 *  Description: Implements a pipelined Tangled Processor (PTP) design. 
-*           
+*      
+*  Notes: Based on Assignment 3 design by Chris Butler, Matthew Castle, and Blair Hall     
 */
 
 // ADD IN `DEFINES THAT WE NEED FROM MULTI-CYCLE TANGLED PROCESSOR
