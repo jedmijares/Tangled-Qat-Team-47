@@ -133,8 +133,7 @@ module frecip(r, a);
 	input wire `FLOAT a;
     wire `FLOAT NaNWire;
 	reg [6:0] look[127:0];
-	// initial $readmemh0(look);   // aggregate.org Icarus Verilog CGI simulator compatible
-	initial $readmemh("frecip_lookup.vmem", look);
+	initial $readmemh0(look);   // aggregate.org Icarus Verilog CGI simulator compatible
 	assign NaNWire = `NaN;
     assign r `FSIGN = ((a==`NaN) || (a==0) ? NaNWire `FSIGN : a `FSIGN);
 	assign r `FEXP = ((a==`NaN) || (a==0) ? NaNWire `FEXP : 253 + (!(a `FFRAC)) - a `FEXP);
@@ -332,7 +331,7 @@ module PTP(halt, reset, clk);
     reg `WORD_SIZE stage1to2ir;
     reg `WORD_SIZE stage2ir1temp;            // Instruction register 2 (top 16 bits for 32-bit instructions)
     reg [1:0] branchJumpHaltFlag;
-    reg `WORD_SIZE offset;
+    reg [7:0] offset;
     reg `WORD_SIZE jumpDest;
     reg `WORD_SIZE stage2to3ir;
     reg `WORD_SIZE stage2to3ir2;
@@ -374,7 +373,7 @@ module PTP(halt, reset, clk);
 	wire `QAT_WORD_SIZE cSwapPlaceB;
 	wire `QAT_WORD_SIZE cSwapPlaceC;
 	wire `QAT_WORD_SIZE shiftedA;
-	wire `WORD_SIZE ending0s;
+	wire [8:0] ending0s;
 
 	traling0s lead(ending0s, shiftedA);
 
@@ -408,9 +407,7 @@ module PTP(halt, reset, clk);
         end
         if (branchJumpHaltFlag == 1) // If branch
         begin
-			begin
-            	pc <= pc + offset - 1; // -1 since pc incremented last clock cycle
-			end
+			pc <= pc + ((offset[7]) ? ({{8{1'b1}}, offset}) : (offset)) - 1;
 			stage1to2ir <= `noop;
         end
         if (branchJumpHaltFlag == 2) //If jump
@@ -710,11 +707,8 @@ module PTP_TB();
 
 	// Run the tests
 	initial begin 
-		// $readmemh1(uut.text);	// aggregate.org Icarus Verilog CGI simulator compatible
-		// $dumpfile;				// aggregate.org Icarus Verilog CGI simulator compatible
-		$readmemh("test_cases.text", uut.text);
-		$readmemh("test_cases.data", uut.data);
-		$dumpfile("dump.txt");
+		$readmemh1(uut.text);	// aggregate.org Icarus Verilog CGI simulator compatible
+		$dumpfile;				// aggregate.org Icarus Verilog CGI simulator compatible
 		$dumpvars(0, uut, uut.regfile[0], uut.regfile[1], uut.regfile[2], uut.Qatregfile[0], uut.Qatregfile[1], uut.Qatregfile[2]); // would normally trace 0, PE
 
 		// Put the machine into a known state

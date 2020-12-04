@@ -204,12 +204,12 @@ andPass:
 orPass:
   lex $1, 0x0
   lex $2, 0x1
-;loop:
-;  add $1, $2
-;  copy $0, $1
-;  lex $3, 0x5
-;  xor $0, $3
-;  brt $0, loop ; test backwards branch
+loop:
+  add $1, $2
+  copy $0, $1
+  lex $3, 0x5
+  xor $0, $3
+  brt $0, loop ; test backwards branch
   lex $1, 0xFF
   lex $2, 0x00
   store $1, $2 ; store 0xFFFF at location 0
