@@ -198,6 +198,7 @@ module ALU (out, op, x, y);
 	reg`WORD_SIZE temp;
 	wire fsltout;
 	wire `WORD_SIZE faddout, fmulout, frecipout, i2fout, f2iout;
+	reg `WORD_SIZE sltCheck;
 
 	// instantiate floating point modules
 	fslt myfslt(fsltout, x, y);
@@ -221,7 +222,11 @@ module ALU (out, op, x, y);
 			`ALURECIP: temp = frecipout;
 			`ALUADD: temp = x+y;
 			`ALUMUL: temp = x*y;
-			`ALUSLT: temp = x<y;
+			`ALUSLT: 
+				begin 
+					sltCheck = x - y;
+					temp = ((sltCheck[15]) ? 16'b1 : 16'b0);
+				end
 			`ALUAND: temp = x&y;
 			`ALUOR: temp = x|y;
 			`ALUSHIFT: temp = ((y < 32768) ? (x << y) : (x >> -y));
